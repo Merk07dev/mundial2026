@@ -325,8 +325,10 @@ function getPhase(m){
 }
 function getScore(m){
   const d=apiData[m.id];
-  if(d&&d.goals&&d.goals.home!==null&&d.goals.home!==undefined)return{home:d.goals.home,away:d.goals.away};
-  return null;
+  if(!d||!d.goals)return null;
+  const h=d.goals.home,a=d.goals.away;
+  if(h===null||h===undefined||a===null||a===undefined)return null;
+  return{home:h,away:a};
 }
 function getElapsed(m){
   const d=apiData[m.id];if(!d)return null;
@@ -645,6 +647,15 @@ async function loadLive(){
     if(lm)apiData[lm.id]=fix;
   });
 }
+// Refresca solo los equipos con partido hoy o en curso
+async function loadActive(){
+  const today=new Date().toISOString().slice(0,10);
+  const activeCodes=FEAT.filter(code=>
+    MS.some(m=>m.fe===code&&m.dt===today)
+  );
+  if(!activeCodes.length)return;
+  await Promise.allSettled(activeCodes.map(c=>loadTeam(c)));
+}
 async function loadKnockout(){
   try{
     const data=await apiFetch(`/fixtures?league=1&season=2026&round=Round of 32`);
@@ -666,7 +677,6 @@ async function loadAll(){
       ...FEAT.map(c=>loadTeam(c)),
       loadKnockout()
     ]);
-    try{await loadLive();}catch(e){}
     dot.className="sdot ok";
     stxt.textContent=`${t("updated")} · ${new Date().toLocaleTimeString(lang==="es"?"es-MX":"en-US",{hour:"2-digit",minute:"2-digit"})}`;
   }catch(e){
@@ -679,7 +689,9 @@ async function loadAll(){
 switchTab("cal");
 renderFilters();renderMatches();
 loadAll();
-setInterval(()=>{loadLive().then(()=>{renderMatches();}).catch(()=>{});},45000);
+// Refresca equipos con partido hoy cada 45 seg para scores en vivo
+setInterval(()=>{loadActive().then(()=>{renderMatches();renderStandings();}).catch(()=>{});},45000);
+// Recarga todo cada 5 min
 setInterval(()=>loadAll(),5*60*1000);
 </script>
 </body>
