@@ -272,7 +272,7 @@ const T={
 function t(k){return T[k]?.[lang]||k}
 
 let lang="es",activeTab="cal",activeFilter="ALL",apiData={},openEv={};
-let standingsData={},knockoutData=[];
+let knockoutData=[];
 
 // ─── LANG ───
 function toggleLang(){
@@ -392,37 +392,148 @@ function renderMatches(){
   list.innerHTML=html;
 }
 
+// ─── STATIC GROUP DEFINITIONS ───
+// All 4 teams per group for the 8 groups we cover
+const GROUP_TEAMS={
+  A:[
+    {code:"MEX",flag:"🇲🇽",es:"México",en:"Mexico"},
+    {code:"RSA",flag:"🇿🇦",es:"Sudáfrica",en:"South Africa"},
+    {code:"KOR",flag:"🇰🇷",es:"Corea del Sur",en:"South Korea"},
+    {code:"CZE",flag:"🇨🇿",es:"Chequia",en:"Czechia"}
+  ],
+  C:[
+    {code:"BRA",flag:"🇧🇷",es:"Brasil",en:"Brazil"},
+    {code:"MAR",flag:"🇲🇦",es:"Marruecos",en:"Morocco"},
+    {code:"HAI",flag:"🇭🇹",es:"Haití",en:"Haiti"},
+    {code:"SCO",flag:"🏴󠁧󠁢󠁳󠁣󠁴󠁿",es:"Escocia",en:"Scotland"}
+  ],
+  E:[
+    {code:"GER",flag:"🇩🇪",es:"Alemania",en:"Germany"},
+    {code:"CUW",flag:"🇨🇼",es:"Curazao",en:"Curaçao"},
+    {code:"CIV",flag:"🇨🇮",es:"Costa de Marfil",en:"Côte d'Ivoire"},
+    {code:"ECU",flag:"🇪🇨",es:"Ecuador",en:"Ecuador"}
+  ],
+  F:[
+    {code:"NED",flag:"🇳🇱",es:"Países Bajos",en:"Netherlands"},
+    {code:"JPN",flag:"🇯🇵",es:"Japón",en:"Japan"},
+    {code:"TUN",flag:"🇹🇳",es:"Túnez",en:"Tunisia"},
+    {code:"SWE",flag:"🇸🇪",es:"Suecia",en:"Sweden"}
+  ],
+  H:[
+    {code:"ESP",flag:"🇪🇸",es:"España",en:"Spain"},
+    {code:"KSA",flag:"🇸🇦",es:"Arabia Saudita",en:"Saudi Arabia"},
+    {code:"URU",flag:"🇺🇾",es:"Uruguay",en:"Uruguay"},
+    {code:"CPV",flag:"🇨🇻",es:"Cabo Verde",en:"Cape Verde"}
+  ],
+  I:[
+    {code:"FRA",flag:"🇫🇷",es:"Francia",en:"France"},
+    {code:"SEN",flag:"🇸🇳",es:"Senegal",en:"Senegal"},
+    {code:"NOR",flag:"🇳🇴",es:"Noruega",en:"Norway"},
+    {code:"IRQ",flag:"🇮🇶",es:"Irak",en:"Iraq"}
+  ],
+  K:[
+    {code:"POR",flag:"🇵🇹",es:"Portugal",en:"Portugal"},
+    {code:"CGO",flag:"🇨🇩",es:"R.D. Congo",en:"DR Congo"},
+    {code:"UZB",flag:"🇺🇿",es:"Uzbekistán",en:"Uzbekistan"},
+    {code:"COL",flag:"🇨🇴",es:"Colombia",en:"Colombia"}
+  ],
+  L:[
+    {code:"ENG",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",es:"Inglaterra",en:"England"},
+    {code:"CRO",flag:"🇭🇷",es:"Croacia",en:"Croatia"},
+    {code:"GHA",flag:"🇬🇭",es:"Ghana",en:"Ghana"},
+    {code:"PAN",flag:"🇵🇦",es:"Panamá",en:"Panama"}
+  ]
+};
+
+// All group-stage fixtures (including non-featured matches) for standings calculation
+const ALL_GROUP_MS=[
+  // Group A
+  {h:"MEX",a:"RSA",gr:"A",id:"mex1"},{h:"KOR",a:"CZE",gr:"A",id:"ka1"},
+  {h:"MEX",a:"KOR",gr:"A",id:"mex2"},{h:"CZE",a:"RSA",gr:"A",id:"ka2"},
+  {h:"CZE",a:"MEX",gr:"A",id:"mex3"},{h:"RSA",a:"KOR",gr:"A",id:"ka3"},
+  // Group C
+  {h:"BRA",a:"MAR",gr:"C",id:"bra1"},{h:"HAI",a:"SCO",gr:"C",id:"kc1"},
+  {h:"BRA",a:"HAI",gr:"C",id:"bra2"},{h:"SCO",a:"MAR",gr:"C",id:"kc2"},
+  {h:"SCO",a:"BRA",gr:"C",id:"bra3"},{h:"MAR",a:"HAI",gr:"C",id:"kc3"},
+  // Group E
+  {h:"GER",a:"CUW",gr:"E",id:"ger1"},{h:"CIV",a:"ECU",gr:"E",id:"ecu1"},
+  {h:"GER",a:"CIV",gr:"E",id:"ger2"},{h:"ECU",a:"CUW",gr:"E",id:"ecu2"},
+  {h:"ECU",a:"GER",gr:"E",id:"ecu3"},{h:"CUW",a:"CIV",gr:"E",id:"ke3"},
+  // Group F
+  {h:"NED",a:"JPN",gr:"F",id:"ned1"},{h:"TUN",a:"SWE",gr:"F",id:"kf1"},
+  {h:"NED",a:"SWE",gr:"F",id:"ned2"},{h:"JPN",a:"TUN",gr:"F",id:"kf2"},
+  {h:"TUN",a:"NED",gr:"F",id:"ned3"},{h:"SWE",a:"JPN",gr:"F",id:"kf3"},
+  // Group H
+  {h:"ESP",a:"KSA",gr:"H",id:"esp1"},{h:"URU",a:"CPV",gr:"H",id:"kh1"},
+  {h:"URU",a:"ESP",gr:"H",id:"esp2"},{h:"CPV",a:"KSA",gr:"H",id:"kh2"},
+  {h:"ESP",a:"CPV",gr:"H",id:"esp3"},{h:"KSA",a:"URU",gr:"H",id:"kh3"},
+  // Group I
+  {h:"FRA",a:"SEN",gr:"I",id:"fre1"},{h:"NOR",a:"IRQ",gr:"I",id:"ki1"},
+  {h:"NOR",a:"FRA",gr:"I",id:"fre2"},{h:"IRQ",a:"SEN",gr:"I",id:"ki2"},
+  {h:"FRA",a:"IRQ",gr:"I",id:"fre3"},{h:"SEN",a:"NOR",gr:"I",id:"ki3"},
+  // Group K
+  {h:"POR",a:"CGO",gr:"K",id:"por1"},{h:"UZB",a:"COL",gr:"K",id:"col1"},
+  {h:"POR",a:"UZB",gr:"K",id:"por2"},{h:"COL",a:"CGO",gr:"K",id:"col2"},
+  {h:"COL",a:"POR",gr:"K",id:"col3"},{h:"CGO",a:"UZB",gr:"K",id:"kk3"},
+  // Group L
+  {h:"ENG",a:"CRO",gr:"L",id:"eng1"},{h:"GHA",a:"PAN",gr:"L",id:"kl1"},
+  {h:"ENG",a:"GHA",gr:"L",id:"eng2"},{h:"CRO",a:"PAN",gr:"L",id:"kl2"},
+  {h:"PAN",a:"ENG",gr:"L",id:"eng3"},{h:"CRO",a:"GHA",gr:"L",id:"kl3"}
+];
+
+function computeStandings(){
+  const result={};
+  FEATURED_GROUPS.forEach(g=>{
+    const teams={};
+    (GROUP_TEAMS[g]||[]).forEach(tm=>{
+      teams[tm.code]={code:tm.code,flag:tm.flag,name:tm,pj:0,g:0,e:0,p:0,gf:0,gc:0,pts:0};
+    });
+    ALL_GROUP_MS.filter(m=>m.gr===g).forEach(m=>{
+      const fix=apiData[m.id];
+      if(!fix||fix.goals?.home===null||fix.goals?.home===undefined)return;
+      const gh=fix.goals.home,ga=fix.goals.away;
+      const ht=teams[m.h],at=teams[m.a];
+      if(ht){ht.pj++;ht.gf+=gh;ht.gc+=ga;if(gh>ga){ht.g++;ht.pts+=3;}else if(gh===ga){ht.e++;ht.pts+=1;}else{ht.p++;}}
+      if(at){at.pj++;at.gf+=ga;at.gc+=gh;if(ga>gh){at.g++;at.pts+=3;}else if(ga===gh){at.e++;at.pts+=1;}else{at.p++;}}
+    });
+    result[g]=Object.values(teams).sort((a,b)=>{
+      if(b.pts!==a.pts)return b.pts-a.pts;
+      const gdA=a.gf-a.gc,gdB=b.gf-b.gc;
+      if(gdB!==gdA)return gdB-gdA;
+      return b.gf-a.gf;
+    });
+  });
+  return result;
+}
+
 // ─── RENDER STANDINGS ───
 function renderStandings(){
   const page=document.getElementById("page-grp");
-  if(!standingsData["__loaded"]){page.innerHTML=`<div class="st-loading">${lang==="es"?"Cargando posiciones...":"Loading standings..."}</div>`;return;}
+  const computed=computeStandings();
   let html="";
   FEATURED_GROUPS.forEach(grpLetter=>{
-    const rows=standingsData[grpLetter];
-    if(!rows||!rows.length)return;
+    const rows=computed[grpLetter]||[];
+    const featCodes=new Set(FEAT);
     html+=`<div class="grp-block"><div class="grp-title"><span>${grpLetter}</span>${lang==="es"?"Grupo":"Group"} ${grpLetter}</div>
     <div class="standing-table">
       <div class="st-head"><div></div><div></div><div>${t("p")}</div><div>${t("w")}</div><div>${t("d")}</div><div>${t("l")}</div><div>${t("pts")}</div></div>`;
     rows.forEach((row,i)=>{
-      const isFeatured=FEAT_IDS.has(row.team?.id);
+      const isFeatured=featCodes.has(row.code);
       const qualify=i<2?" qualify":i===2?" maybe":"";
+      const gd=row.gf-row.gc;
       html+=`<div class="st-row${qualify}${isFeatured?" featured":""}">
         <div class="st-pos">${i+1}</div>
-        <div class="st-team"><span class="st-flag">${row.team?.flag||"🏳️"}</span><span class="st-name">${row.team?.name||""}</span></div>
-        <div class="st-num">${row.all?.played??0}</div>
-        <div class="st-num">${row.all?.win??0}</div>
-        <div class="st-num">${row.all?.draw??0}</div>
-        <div class="st-num">${row.all?.lose??0}</div>
-        <div class="st-pts">${row.points??0}</div>
+        <div class="st-team"><span class="st-flag">${row.flag}</span><span class="st-name">${row.name[lang]}</span></div>
+        <div class="st-num">${row.pj}</div>
+        <div class="st-num">${row.g}</div>
+        <div class="st-num">${row.e}</div>
+        <div class="st-num">${row.p}</div>
+        <div class="st-pts">${row.pts}</div>
       </div>`;
     });
     html+=`</div></div>`;
   });
-  if(!html)html=`<div class="empty" style="padding:3rem 1rem">
-    <i class="ti ti-calendar-time" style="font-size:32px;opacity:.3;display:block;margin-bottom:12px" aria-hidden="true"></i>
-    ${lang==="es"?"Las posiciones estarán disponibles una vez que inicien los partidos de grupo.":"Standings will be available once the group stage matches begin."}
-  </div>`;
-  page.innerHTML=html;
+  page.innerHTML=html||`<div class="empty">No hay datos de grupos disponibles.</div>`;
 }
 
 // ─── RENDER KNOCKOUT ───
@@ -534,23 +645,6 @@ async function loadLive(){
     if(lm)apiData[lm.id]=fix;
   });
 }
-async function loadStandings(){
-  try{
-    const data=await apiFetch(`/standings?league=1&season=2026`);
-    const leagues=data?.response||[];
-    standingsData["__loaded"]=true;
-    leagues.forEach(l=>{
-      const standings=l.league?.standings||[];
-      standings.forEach(grpArr=>{
-        if(!grpArr.length)return;
-        const rawGroup=grpArr[0]?.group||"";
-        const match=rawGroup.match(/\b([A-L])\b\s*$/i)||rawGroup.match(/group\s+([A-L])\b/i)||rawGroup.match(/grupo\s+([A-L])\b/i)||rawGroup.match(/^([A-L])$/i);
-        const grpLetter=match?match[1].toUpperCase():"?";
-        if(FEATURED_GROUPS.includes(grpLetter))standingsData[grpLetter]=grpArr;
-      });
-    });
-  }catch(e){standingsData["__loaded"]=true;}
-}
 async function loadKnockout(){
   try{
     const data=await apiFetch(`/fixtures?league=1&season=2026&round=Round of 32`);
@@ -570,7 +664,6 @@ async function loadAll(){
   try{
     await Promise.allSettled([
       ...FEAT.map(c=>loadTeam(c)),
-      loadStandings(),
       loadKnockout()
     ]);
     try{await loadLive();}catch(e){}
