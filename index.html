@@ -395,7 +395,7 @@ function renderMatches(){
 // ─── RENDER STANDINGS ───
 function renderStandings(){
   const page=document.getElementById("page-grp");
-  if(!Object.keys(standingsData).length){page.innerHTML=`<div class="st-loading">${lang==="es"?"Cargando posiciones...":"Loading standings..."}</div>`;return;}
+  if(!standingsData["__loaded"]){page.innerHTML=`<div class="st-loading">${lang==="es"?"Cargando posiciones...":"Loading standings..."}</div>`;return;}
   let html="";
   FEATURED_GROUPS.forEach(grpLetter=>{
     const rows=standingsData[grpLetter];
@@ -418,7 +418,10 @@ function renderStandings(){
     });
     html+=`</div></div>`;
   });
-  if(!html)html=`<div class="empty">${lang==="es"?"Posiciones no disponibles aún":"Standings not available yet"}</div>`;
+  if(!html)html=`<div class="empty" style="padding:3rem 1rem">
+    <i class="ti ti-calendar-time" style="font-size:32px;opacity:.3;display:block;margin-bottom:12px" aria-hidden="true"></i>
+    ${lang==="es"?"Las posiciones estarán disponibles una vez que inicien los partidos de grupo.":"Standings will be available once the group stage matches begin."}
+  </div>`;
   page.innerHTML=html;
 }
 
@@ -535,18 +538,18 @@ async function loadStandings(){
   try{
     const data=await apiFetch(`/standings?league=1&season=2026`);
     const leagues=data?.response||[];
+    standingsData["__loaded"]=true;
     leagues.forEach(l=>{
       const standings=l.league?.standings||[];
       standings.forEach(grpArr=>{
-        if(grpArr.length){
-          const grpLetter=grpArr[0]?.group?.replace(/.*group\s*/i,"").trim().toUpperCase()||"?";
-          if(FEATURED_GROUPS.includes(grpLetter)){
-            standingsData[grpLetter]=grpArr;
-          }
-        }
+        if(!grpArr.length)return;
+        const rawGroup=grpArr[0]?.group||"";
+        const match=rawGroup.match(/\b([A-L])\b\s*$/i)||rawGroup.match(/group\s+([A-L])\b/i)||rawGroup.match(/grupo\s+([A-L])\b/i)||rawGroup.match(/^([A-L])$/i);
+        const grpLetter=match?match[1].toUpperCase():"?";
+        if(FEATURED_GROUPS.includes(grpLetter))standingsData[grpLetter]=grpArr;
       });
     });
-  }catch(e){}
+  }catch(e){standingsData["__loaded"]=true;}
 }
 async function loadKnockout(){
   try{
